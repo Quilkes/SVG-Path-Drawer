@@ -1,0 +1,6 @@
+/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+/api/bundle/*
+  # Allow the worker to handle its own cache headers
+  ! Cache-Control
