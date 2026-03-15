@@ -63,7 +63,7 @@ export function StylePanel() {
         <select
           value={activeShape.fillType}
           onChange={(e) => update({ fillType: e.target.value as FillType })}
-          className="flex-1 bg-panel2 border border-border rounded-[var(--radius)] text-editor-text text-[11px] px-1.5 py-[3px] outline-none cursor-pointer focus:border-accent"
+          className="flex-1 bg-panel2 border border-border rounded-(--radius) text-editor-text text-[11px] px-1.5 py-[3px] outline-none cursor-pointer focus:border-accent"
         >
           <option value="solid">Solid</option>
           <option value="gradient">Gradient</option>
@@ -78,7 +78,7 @@ export function StylePanel() {
             type="color"
             value={activeShape.fillColor}
             onChange={(e) => update({ fillColor: e.target.value })}
-            className="w-7 h-[22px] border border-border rounded-[var(--radius)] cursor-pointer bg-transparent p-[1px]"
+            className="w-7 h-[22px] border border-border rounded-(--radius) cursor-pointer bg-transparent p-px"
           />
         </PropRow>
       )}
@@ -93,7 +93,7 @@ export function StylePanel() {
                 type="color"
                 value={stop.color}
                 onChange={(e) => updateStop(i, { color: e.target.value })}
-                className="w-7 h-[22px] border border-border rounded-[var(--radius)] cursor-pointer bg-transparent p-[1px]"
+                className="w-7 h-[22px] border border-border rounded-(--radius) cursor-pointer bg-transparent p-px"
               />
               <input
                 type="number"
@@ -103,12 +103,12 @@ export function StylePanel() {
                 onChange={(e) =>
                   updateStop(i, { offset: parseInt(e.target.value) / 100 })
                 }
-                className="w-11 bg-panel2 border border-border rounded-[var(--radius)] text-editor-text text-[11px] px-[5px] py-[3px] font-mono outline-none"
+                className="w-full bg-panel2 border border-border rounded-(--radius) text-editor-text text-[11px] px-[5px] py-[3px] font-mono outline-none"
               />
               {gradientStops.length > 2 && (
                 <button
                   onClick={() => removeStop(i)}
-                  className="bg-transparent border border-border rounded-[var(--radius)] text-dim text-sm leading-none cursor-pointer px-[5px] py-[1px] hover:border-editor-red hover:text-editor-red transition-colors duration-100"
+                  className="bg-transparent border border-border rounded-(--radius) text-dim text-sm leading-none cursor-pointer px-[5px] py-px hover:border-editor-red hover:text-editor-red transition-colors duration-100"
                 >
                   <FiX />
                 </button>
@@ -129,7 +129,7 @@ export function StylePanel() {
           type="color"
           value={activeShape.strokeColor}
           onChange={(e) => update({ strokeColor: e.target.value })}
-          className="w-7 h-[22px] border border-border rounded-[var(--radius)] cursor-pointer bg-transparent p-[1px]"
+          className="w-7 h-[22px] border border-border rounded-(--radius) cursor-pointer bg-transparent p-px"
         />
       </PropRow>
       <Slider
