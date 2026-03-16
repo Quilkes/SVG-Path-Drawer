@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useEditorStore } from "../../store/useEditorStore";
 import type { Shape, PolyShape, Point, GuideLine } from "../../types/editor";
 import { computeGuides, applyGuideSnap, snapPoint } from "../../utils/geometry";
@@ -36,6 +36,13 @@ function getTransform(): Transform {
 
 export function EditorCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Custom context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    show: boolean;
+  }>({ x: 0, y: 0, show: false });
 
   // ─── Drag / interaction refs (avoid React re-renders during drag) ──────────
   const isDraggingRef = useRef(false);
@@ -518,7 +525,7 @@ export function EditorCanvas() {
 
       // ── Pan dragging ──
       if (isPanningRef.current) {
-        const { viewState, setViewState } = useEditorStore.getState();
+        const { setViewState } = useEditorStore.getState();
         setViewState({
           panX: panStartOffsetRef.current.x + (sx - panStartRef.current.x),
           panY: panStartOffsetRef.current.y + (sy - panStartRef.current.y),
@@ -686,7 +693,6 @@ export function EditorCanvas() {
     const onMouseDown = (e: MouseEvent) => {
       if (e.button !== 0 && e.button !== 1 && e.button !== 2) return;
       const { sx, sy } = getXY(e);
-      const t = getTransform();
 
       // ── Middle mouse = pan ──
       if (e.button === 1) {
@@ -961,14 +967,35 @@ export function EditorCanvas() {
       }
     };
 
-    const onContextMenu = (e: MouseEvent) => e.preventDefault();
+    const onContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+
+      // If right click over a point, let mousedown handle selection first
+      // But we can show our context menu
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      setContextMenu({ x, y, show: true });
+    };
 
     canvas.addEventListener("wheel", onWheel, { passive: false });
     canvas.addEventListener("mousemove", onMouseMove);
     canvas.addEventListener("mousedown", onMouseDown);
     canvas.addEventListener("mouseup", onMouseUp);
     canvas.addEventListener("contextmenu", onContextMenu);
+
+    const onClickOutside = () =>
+      setContextMenu((prev) => ({ ...prev, show: false }));
+    const onEscKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClickOutside();
+    };
+
+    window.addEventListener("click", onClickOutside);
+    window.addEventListener("keydown", onEscKey);
+
     return () => {
+      window.removeEventListener("click", onClickOutside);
+      window.removeEventListener("keydown", onEscKey);
       canvas.removeEventListener("wheel", onWheel);
       canvas.removeEventListener("mousemove", onMouseMove);
       canvas.removeEventListener("mousedown", onMouseDown);
@@ -998,9 +1025,6 @@ export function EditorCanvas() {
         setSelectedPoints,
         clipboard,
         setClipboard,
-        setMode,
-        viewState,
-        setViewState,
       } = useEditorStore.getState();
       const s = shapes.find((sh) => sh.id === activeId);
 
@@ -1415,6 +1439,46 @@ export function EditorCanvas() {
     redraw();
   }, []);
 
+  const handleContextAction = (action: string) => {
+    const {
+      setMode,
+      undo,
+      redo,
+      removeSelectedPoints,
+      selectAllPoints,
+      clearAll,
+      setActiveShape,
+    } = useEditorStore.getState();
+    switch (action) {
+      case "edit":
+        setMode("edit");
+        break;
+      case "move":
+        setMode("move");
+        break;
+      case "delete":
+        removeSelectedPoints();
+        break;
+      case "deleteShape":
+        setActiveShape(null);
+        break;
+      case "selectAll":
+        selectAllPoints();
+        break;
+      case "undo":
+        undo();
+        break;
+      case "redo":
+        redo();
+        break;
+      case "clearAll":
+        clearAll();
+        break;
+    }
+    setContextMenu((prev) => ({ ...prev, show: false }));
+    redraw();
+  };
+
   return (
     <div
       className="flex-1 relative overflow-hidden bg-editor-bg"
@@ -1429,6 +1493,57 @@ export function EditorCanvas() {
         id="editor-canvas"
         className="block w-full h-full cursor-crosshair"
       />
+
+      {contextMenu.show && (
+        <div
+          className="absolute z-50 bg-panel/90 backdrop-blur-xl border border-border/50 ring-1 ring-white/5 rounded-lg shadow-2xl py-1 w-48 text-[11px] font-mono"
+          style={{
+            left: Math.min(contextMenu.x, window.innerWidth - 200),
+            top: Math.min(contextMenu.y, window.innerHeight - 200),
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div
+            className="px-3 py-1.5 text-dim hover:bg-accent/20 hover:text-accent cursor-pointer transition-colors"
+            onClick={() => handleContextAction("edit")}
+          >
+            Edit Points Mode
+          </div>
+          <div
+            className="px-3 py-1.5 text-dim hover:bg-accent/20 hover:text-accent cursor-pointer transition-colors"
+            onClick={() => handleContextAction("move")}
+          >
+            Move Shape Mode
+          </div>
+          <div className="h-px bg-border/50 my-1"></div>
+          <div
+            className="px-3 py-1.5 text-dim hover:bg-accent/20 hover:text-accent cursor-pointer transition-colors"
+            onClick={() => handleContextAction("selectAll")}
+          >
+            Select All Points
+          </div>
+          <div
+            className="px-3 py-1.5 text-editor-red hover:bg-editor-red/20 cursor-pointer transition-colors"
+            onClick={() => handleContextAction("delete")}
+          >
+            Delete Selected Points
+          </div>
+          <div className="h-px bg-border/50 my-1"></div>
+          <div
+            className="px-3 py-1.5 text-dim hover:bg-accent/20 hover:text-accent cursor-pointer transition-colors"
+            onClick={() => handleContextAction("undo")}
+          >
+            Undo
+          </div>
+          <div
+            className="px-3 py-1.5 text-dim hover:bg-accent/20 hover:text-accent cursor-pointer transition-colors"
+            onClick={() => handleContextAction("redo")}
+          >
+            Redo
+          </div>
+        </div>
+      )}
+
       <ModePill />
       <CoordsPill />
     </div>
@@ -1462,7 +1577,7 @@ function ModePill() {
   return (
     <div
       id="mode-pill"
-      className="absolute bottom-3.5 left-1/2 -translate-x-1/2 bg-[rgba(26,26,26,0.95)] border border-border backdrop-blur-md px-4 py-[5px] rounded-[20px] font-mono text-[10px] text-dim pointer-events-none whitespace-nowrap max-w-[92%] overflow-hidden text-ellipsis"
+      className="absolute bottom-3.5 left-1/2 -translate-x-1/2 bg-panel/80 border border-border/50 ring-1 ring-white/5 backdrop-blur-xl px-4 py-1.25 rounded-[20px] font-mono text-[10px] text-dim pointer-events-none whitespace-nowrap max-w-[92%] overflow-hidden text-ellipsis shadow-lg"
       dangerouslySetInnerHTML={{
         __html:
           '<b class="text-accent">Edit</b> — drag pts · G=grab · E=extrude · R-click=multi-sel · ±=zoom · mid-btn=pan',
@@ -1475,7 +1590,7 @@ function CoordsPill() {
   return (
     <div
       id="coords-pill"
-      className="absolute top-2.5 right-3 font-mono text-[10px] text-dim pointer-events-none"
+      className="absolute top-2.5 right-3 font-mono text-[10px] text-dim pointer-events-none bg-panel/80 backdrop-blur-xl px-2 py-1 rounded-(--radius) border border-border/50 ring-1 ring-white/5 shadow-md"
     >
       0, 0
     </div>

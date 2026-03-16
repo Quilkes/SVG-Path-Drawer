@@ -77,6 +77,7 @@ export const useEditorStore = create<EditorState>()(
         panY: 0,
         leftSidebarOpen: true,
         rightSidebarOpen: true,
+        zenMode: false,
       },
 
       history: [],
