@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useEditorStore } from "../../store/useEditorStore";
 import type { Shape, PolyShape, Point, GuideLine } from "../../types/editor";
 import { computeGuides, applyGuideSnap, snapPoint } from "../../utils/geometry";
@@ -37,13 +37,6 @@ function getTransform(): Transform {
 export function EditorCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Custom context menu state
-  const [contextMenu, setContextMenu] = useState<{
-    x: number;
-    y: number;
-    show: boolean;
-  }>({ x: 0, y: 0, show: false });
-
   // ─── Drag / interaction refs (avoid React re-renders during drag) ──────────
   const isDraggingRef = useRef(false);
   const dragOffsetRef = useRef<Point>({ x: 0, y: 0 });
@@ -51,6 +44,7 @@ export function EditorCanvas() {
   const boxStartRef = useRef<Point | null>(null);
   const boxEndRef = useRef<Point | null>(null);
   const hoveredPtRef = useRef<number | null>(null);
+  const draggingCtrlIdxRef = useRef<number | null>(null);
   const grabModeRef = useRef(false);
   const grabStartPosRef = useRef<Point | null>(null);
   const grabStartPtsRef = useRef<Point[]>([]);
@@ -114,7 +108,7 @@ export function EditorCanvas() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const { shapes, activeId, selectedPointIndices, viewState } =
+      const { shapes, activeId, selectedPointIndices, viewState, mode } =
       useEditorStore.getState();
     const t: Transform = {
       zoom: viewState.zoom,
@@ -141,9 +135,17 @@ export function EditorCanvas() {
     }
 
     // ── Shapes ──
-    shapes.forEach((s) =>
-      drawShape(ctx, s, s.id === activeId, selectedPointIndices, canvas, t),
-    );
+      shapes.forEach((s) =>
+        drawShape(
+          ctx,
+          s,
+          s.id === activeId,
+          selectedPointIndices,
+          canvas,
+          t,
+          mode,
+        ),
+      );
 
     // ── Guides ──
     if (
@@ -235,6 +237,7 @@ export function EditorCanvas() {
     selectedPointIndices: Set<number>,
     canvas: HTMLCanvasElement,
     t: Transform,
+      mode: string,
   ) {
     ctx.save();
     ctx.globalAlpha = s.opacity;
@@ -307,47 +310,57 @@ export function EditorCanvas() {
 
     if (!isActive) return;
 
-    // ── Skeleton ──
-    ctx.save();
-    ctx.strokeStyle = "rgba(74,158,255,0.18)";
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 4]);
-    ctx.beginPath();
-    s.points.forEach((pt, i) => {
-      const sp = toScreen(pt.x, pt.y, t);
-      i === 0 ? ctx.moveTo(sp.x, sp.y) : ctx.lineTo(sp.x, sp.y);
-    });
-    ctx.closePath();
-    ctx.stroke();
-    ctx.setLineDash([]);
+      const showEditOverlay =
+        mode === "edit" &&
+        (selectedPointIndices.size > 0 ||
+          hoveredPtRef.current !== null ||
+          draggingCtrlIdxRef.current !== null ||
+          isDraggingRef.current ||
+          grabModeRef.current);
 
-    // ── Ctrl point lines ──
-    const ctrl = s.ctrlPoints || {};
-    ctx.strokeStyle = "rgba(74,205,204,0.25)";
-    ctx.lineWidth = 1;
-    Object.entries(ctrl).forEach(([k, cp]) => {
-      const idx = parseInt(k);
-      if (idx >= s.points.length) return;
-      const pt = s.points[idx];
-      const prevIdx = (idx - 1 + s.points.length) % s.points.length;
-      const prev = s.points[prevIdx];
-      const sp = toScreen(pt.x, pt.y, t);
-      const scp = toScreen(cp.x, cp.y, t);
-      const sprev = toScreen(prev.x, prev.y, t);
-      ctx.beginPath();
-      ctx.moveTo(scp.x, scp.y);
-      ctx.lineTo(sp.x, sp.y);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(scp.x, scp.y);
-      ctx.lineTo(sprev.x, sprev.y);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(scp.x, scp.y, 3, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(74,205,204,0.7)";
-      ctx.fill();
-    });
-    ctx.restore();
+      if (showEditOverlay) {
+        // ── Skeleton ──
+        ctx.save();
+        ctx.strokeStyle = "rgba(74,158,255,0.18)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        s.points.forEach((pt, i) => {
+          const sp = toScreen(pt.x, pt.y, t);
+          i === 0 ? ctx.moveTo(sp.x, sp.y) : ctx.lineTo(sp.x, sp.y);
+        });
+        ctx.closePath();
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // ── Ctrl point lines ──
+        const ctrl = s.ctrlPoints || {};
+        ctx.strokeStyle = "rgba(74,205,204,0.25)";
+        ctx.lineWidth = 1;
+        Object.entries(ctrl).forEach(([k, cp]) => {
+          const idx = parseInt(k);
+          if (idx >= s.points.length) return;
+          const pt = s.points[idx];
+          const prevIdx = (idx - 1 + s.points.length) % s.points.length;
+          const prev = s.points[prevIdx];
+          const sp = toScreen(pt.x, pt.y, t);
+          const scp = toScreen(cp.x, cp.y, t);
+          const sprev = toScreen(prev.x, prev.y, t);
+          ctx.beginPath();
+          ctx.moveTo(scp.x, scp.y);
+          ctx.lineTo(sp.x, sp.y);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(scp.x, scp.y);
+          ctx.lineTo(sprev.x, sprev.y);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(scp.x, scp.y, 3, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(74,205,204,0.7)";
+          ctx.fill();
+        });
+        ctx.restore();
+      }
 
     // ── Point handles ──
     s.points.forEach((pt, idx) => {
@@ -384,6 +397,23 @@ export function EditorCanvas() {
     for (let i = s.points.length - 1; i >= 0; i--) {
       const sp = toScreen(s.points[i].x, s.points[i].y, t);
       if (Math.hypot(sx - sp.x, sy - sp.y) < HIT) return i;
+    }
+    return null;
+  }
+
+  function getCtrlPointAt(sx: number, sy: number): number | null {
+    const { shapes, activeId } = useEditorStore.getState();
+    const s = shapes.find((sh) => sh.id === activeId);
+    if (!s || s.kind !== "poly") return null;
+    const t = getTransform();
+    const ctrl = s.ctrlPoints || {};
+    const HIT = 10;
+
+    for (let i = s.points.length - 1; i >= 0; i--) {
+      const cp = ctrl[i];
+      if (!cp) continue;
+      const scp = toScreen(cp.x, cp.y, t);
+      if (Math.hypot(sx - scp.x, sy - scp.y) < HIT) return i;
     }
     return null;
   }
@@ -637,6 +667,18 @@ export function EditorCanvas() {
 
       // ── Edit mode point drag ──
       if (isDraggingRef.current && mode === "edit" && s && s.kind === "poly") {
+        if (draggingCtrlIdxRef.current !== null) {
+          const idx = draggingCtrlIdxRef.current;
+          const nextCtrl = {
+            ...(s.ctrlPoints || {}),
+            [idx]: toWorld(sx, sy, t),
+          };
+          updateShape(s.id, { ctrlPoints: nextCtrl });
+          dragOffsetRef.current = { x: sx, y: sy };
+          redraw();
+          return;
+        }
+
         const dx = (sx - dragOffsetRef.current.x) / t.zoom;
         const dy = (sy - dragOffsetRef.current.y) / t.zoom;
         const newPoints = [...s.points];
@@ -678,8 +720,11 @@ export function EditorCanvas() {
       if (mode === "edit" && !grabModeRef.current) {
         const prev = hoveredPtRef.current;
         hoveredPtRef.current = getPointAt(sx, sy);
+        const hoveredCtrl = getCtrlPointAt(sx, sy);
         canvas.style.cursor =
-          hoveredPtRef.current !== null ? "pointer" : "crosshair";
+          hoveredPtRef.current !== null || hoveredCtrl !== null
+            ? "pointer"
+            : "crosshair";
         if (prev !== hoveredPtRef.current) redraw();
       } else if (mode === "addpt") {
         canvas.style.cursor = getEdgeAt(sx, sy) ? "cell" : "crosshair";
@@ -721,6 +766,7 @@ export function EditorCanvas() {
       void snap;
 
       const clickedPt = getPointAt(sx, sy);
+      const clickedCtrl = getCtrlPointAt(sx, sy);
       const hitShapeId = getShapeAt(sx, sy);
       const s = shapes.find((sh) => sh.id === activeId);
 
@@ -875,6 +921,13 @@ export function EditorCanvas() {
           redraw();
           return;
         }
+        if (isLeft && clickedCtrl !== null) {
+          draggingCtrlIdxRef.current = clickedCtrl;
+          isDraggingRef.current = true;
+          dragOffsetRef.current = { x: sx, y: sy };
+          redraw();
+          return;
+        }
         if (clickedPt !== null) {
           if (e.shiftKey) {
             selectPoint(clickedPt, true);
@@ -916,6 +969,7 @@ export function EditorCanvas() {
       if (isDraggingRef.current) {
         snap();
         isDraggingRef.current = false;
+        draggingCtrlIdxRef.current = null;
       }
 
       if (isBoxSelectingRef.current) {
@@ -967,35 +1021,14 @@ export function EditorCanvas() {
       }
     };
 
-    const onContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-
-      // If right click over a point, let mousedown handle selection first
-      // But we can show our context menu
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      setContextMenu({ x, y, show: true });
-    };
+    const onContextMenu = (e: MouseEvent) => e.preventDefault();
 
     canvas.addEventListener("wheel", onWheel, { passive: false });
     canvas.addEventListener("mousemove", onMouseMove);
     canvas.addEventListener("mousedown", onMouseDown);
     canvas.addEventListener("mouseup", onMouseUp);
     canvas.addEventListener("contextmenu", onContextMenu);
-
-    const onClickOutside = () =>
-      setContextMenu((prev) => ({ ...prev, show: false }));
-    const onEscKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClickOutside();
-    };
-
-    window.addEventListener("click", onClickOutside);
-    window.addEventListener("keydown", onEscKey);
-
     return () => {
-      window.removeEventListener("click", onClickOutside);
-      window.removeEventListener("keydown", onEscKey);
       canvas.removeEventListener("wheel", onWheel);
       canvas.removeEventListener("mousemove", onMouseMove);
       canvas.removeEventListener("mousedown", onMouseDown);
@@ -1439,46 +1472,6 @@ export function EditorCanvas() {
     redraw();
   }, []);
 
-  const handleContextAction = (action: string) => {
-    const {
-      setMode,
-      undo,
-      redo,
-      removeSelectedPoints,
-      selectAllPoints,
-      clearAll,
-      setActiveShape,
-    } = useEditorStore.getState();
-    switch (action) {
-      case "edit":
-        setMode("edit");
-        break;
-      case "move":
-        setMode("move");
-        break;
-      case "delete":
-        removeSelectedPoints();
-        break;
-      case "deleteShape":
-        setActiveShape(null);
-        break;
-      case "selectAll":
-        selectAllPoints();
-        break;
-      case "undo":
-        undo();
-        break;
-      case "redo":
-        redo();
-        break;
-      case "clearAll":
-        clearAll();
-        break;
-    }
-    setContextMenu((prev) => ({ ...prev, show: false }));
-    redraw();
-  };
-
   return (
     <div
       className="flex-1 relative overflow-hidden bg-editor-bg"
@@ -1493,57 +1486,6 @@ export function EditorCanvas() {
         id="editor-canvas"
         className="block w-full h-full cursor-crosshair"
       />
-
-      {contextMenu.show && (
-        <div
-          className="absolute z-50 bg-panel/90 backdrop-blur-xl border border-border/50 ring-1 ring-white/5 rounded-lg shadow-2xl py-1 w-48 text-[11px] font-mono"
-          style={{
-            left: Math.min(contextMenu.x, window.innerWidth - 200),
-            top: Math.min(contextMenu.y, window.innerHeight - 200),
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div
-            className="px-3 py-1.5 text-dim hover:bg-accent/20 hover:text-accent cursor-pointer transition-colors"
-            onClick={() => handleContextAction("edit")}
-          >
-            Edit Points Mode
-          </div>
-          <div
-            className="px-3 py-1.5 text-dim hover:bg-accent/20 hover:text-accent cursor-pointer transition-colors"
-            onClick={() => handleContextAction("move")}
-          >
-            Move Shape Mode
-          </div>
-          <div className="h-px bg-border/50 my-1"></div>
-          <div
-            className="px-3 py-1.5 text-dim hover:bg-accent/20 hover:text-accent cursor-pointer transition-colors"
-            onClick={() => handleContextAction("selectAll")}
-          >
-            Select All Points
-          </div>
-          <div
-            className="px-3 py-1.5 text-editor-red hover:bg-editor-red/20 cursor-pointer transition-colors"
-            onClick={() => handleContextAction("delete")}
-          >
-            Delete Selected Points
-          </div>
-          <div className="h-px bg-border/50 my-1"></div>
-          <div
-            className="px-3 py-1.5 text-dim hover:bg-accent/20 hover:text-accent cursor-pointer transition-colors"
-            onClick={() => handleContextAction("undo")}
-          >
-            Undo
-          </div>
-          <div
-            className="px-3 py-1.5 text-dim hover:bg-accent/20 hover:text-accent cursor-pointer transition-colors"
-            onClick={() => handleContextAction("redo")}
-          >
-            Redo
-          </div>
-        </div>
-      )}
-
       <ModePill />
       <CoordsPill />
     </div>
@@ -1577,7 +1519,7 @@ function ModePill() {
   return (
     <div
       id="mode-pill"
-      className="absolute bottom-3.5 left-1/2 -translate-x-1/2 bg-panel/80 border border-border/50 ring-1 ring-white/5 backdrop-blur-xl px-4 py-1.25 rounded-[20px] font-mono text-[10px] text-dim pointer-events-none whitespace-nowrap max-w-[92%] overflow-hidden text-ellipsis shadow-lg"
+      className="absolute bottom-3.5 left-1/2 -translate-x-1/2 bg-[rgba(26,26,26,0.95)] border border-border backdrop-blur-md px-4 py-[5px] rounded-[20px] font-mono text-[10px] text-dim pointer-events-none whitespace-nowrap max-w-[92%] overflow-hidden text-ellipsis"
       dangerouslySetInnerHTML={{
         __html:
           '<b class="text-accent">Edit</b> — drag pts · G=grab · E=extrude · R-click=multi-sel · ±=zoom · mid-btn=pan',
@@ -1590,7 +1532,7 @@ function CoordsPill() {
   return (
     <div
       id="coords-pill"
-      className="absolute top-2.5 right-3 font-mono text-[10px] text-dim pointer-events-none bg-panel/80 backdrop-blur-xl px-2 py-1 rounded-(--radius) border border-border/50 ring-1 ring-white/5 shadow-md"
+      className="absolute top-2.5 right-3 font-mono text-[10px] text-dim pointer-events-none"
     >
       0, 0
     </div>

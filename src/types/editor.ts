@@ -68,5 +68,4 @@ export type ViewState = {
   /** Layout states */
   leftSidebarOpen: boolean;
   rightSidebarOpen: boolean;
-  zenMode: boolean;
 };

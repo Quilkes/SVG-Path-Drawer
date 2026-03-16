@@ -74,15 +74,15 @@ export function BlenderToolbar() {
   ];
 
   return (
-    <div className="w-14 bg-panel/85 backdrop-blur-xl shrink-0 border-r border-border/50 ring-1 ring-white/5 flex flex-col items-center py-2 px-0.5 gap-2 overflow-y-auto h-full z-20 shadow-2xl">
+    <div className="w-14 shrink-0 border-r border-border flex flex-col items-center py-2 px-0.5 gap-2 overflow-y-auto">
       {tools.map((t) => (
         <Tooltip key={t.m} content={t.t}>
           <button
             onClick={() => setMode(t.m)}
             className={cn(
-              "w-8 h-8 flex items-center justify-center rounded-[4px] transition-colors focus:outline-none",
+              "w-[32px] h-[32px] bg-muted flex items-center justify-center rounded-[4px] transition-colors focus:outline-none",
               mode === t.m
-                ? "bg-accent/20 text-accent font-bold"
+                ? "bg-[#3a5888] text-white"
                 : "text-dim hover:bg-border2 hover:text-text-head",
             )}
           >
@@ -96,7 +96,7 @@ export function BlenderToolbar() {
       <Tooltip content="Add Rectangle">
         <button
           onClick={() => handleCreateShape("rect")}
-          className="w-8 h-8 flex items-center justify-center rounded-[4px] text-dim hover:bg-border2 hover:text-text-head transition-colors focus:outline-none"
+          className="w-[32px] h-[32px] flex items-center justify-center rounded-[4px] text-dim hover:bg-border2 hover:text-text-head transition-colors focus:outline-none"
         >
           <FiSquare size={16} />
         </button>
@@ -105,7 +105,7 @@ export function BlenderToolbar() {
       <Tooltip content="Add Circle">
         <button
           onClick={() => handleCreateShape("circle")}
-          className="w-8 h-8 flex items-center justify-center rounded-[4px] text-dim hover:bg-border2 hover:text-text-head transition-colors focus:outline-none"
+          className="w-[32px] h-[32px] flex items-center justify-center rounded-[4px] text-dim hover:bg-border2 hover:text-text-head transition-colors focus:outline-none"
         >
           <FiCircle size={16} />
         </button>
