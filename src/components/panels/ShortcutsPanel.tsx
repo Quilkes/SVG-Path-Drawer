@@ -1,12 +1,18 @@
 import { Fragment } from 'react';
 
 const shortcuts = [
-  { key: 'L-click',      desc: 'Select point' },
-  { key: 'R-click',      desc: 'Add/remove from sel' },
+  { key: 'L-drag',       desc: 'Drag point(s)' },
+  { key: 'R-click',      desc: 'Add/remove from selection' },
   { key: 'Shift+drag',   desc: 'Box select' },
-  { key: 'G',            desc: 'Grab selected' },
+  { key: 'G',            desc: 'Grab selected points' },
+  { key: 'X / Y',        desc: 'Lock grab to axis (in Grab)' },
+  { key: 'E',            desc: 'Extrude selected point(s)' },
   { key: 'A',            desc: 'Select / deselect all' },
   { key: 'X / Del',      desc: 'Delete selected pts' },
+  { key: '+ / -',        desc: 'Zoom in / out' },
+  { key: 'Mid-drag',     desc: 'Pan canvas' },
+  { key: 'Ctrl+Scroll',  desc: 'Zoom toward cursor' },
+  { key: 'Ctrl+0',       desc: 'Reset view (1:1)' },
   { key: 'Ctrl+Z',       desc: 'Undo' },
   { key: 'Ctrl+Y',       desc: 'Redo' },
   { key: 'Ctrl+C/V',     desc: 'Copy / paste pts' },

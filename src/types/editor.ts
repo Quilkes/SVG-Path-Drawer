@@ -3,39 +3,54 @@ export type Point = {
   y: number;
 };
 
-export type PointType = 'straight' | 'curve';
+export type PointType = "straight" | "curve";
 
 export type GradientStop = {
   color: string;
   offset: number;
 };
 
-export type FillType = 'solid' | 'gradient' | 'none';
+export type FillType = "solid" | "gradient" | "none";
 
-export type Shape = {
+/** Base shape properties shared by all kinds */
+interface ShapeBase {
   id: number;
   name: string;
-  kind: 'poly';
-  points: Point[];
-  pointTypes: PointType[];
-  ctrlPoints: Record<number, Point>;
   fillColor: string;
   strokeColor: string;
   strokeWidth: number;
   opacity: number;
   fillType: FillType;
   gradientStops: GradientStop[];
-  /** Original corner points before rounding is applied. Used so radius can be changed non-destructively. */
-  basePoints?: Point[];
-  /** Per-point corner radius. Key = original point index, value = radius applied. */
-  cornerRadii?: Record<number, number>;
-};
+}
 
-export type EditorMode = 'edit' | 'addpt' | 'move' | 'scale';
-export type RoundMode = 'corner' | 'edge';
+/** Polygon / freeform path shape */
+export interface PolyShape extends ShapeBase {
+  kind: "poly";
+  points: Point[];
+  pointTypes: PointType[];
+  ctrlPoints: Record<number, Point>;
+  /** Original corner points before rounding — for non-destructive radius. */
+  basePoints?: Point[];
+  /** Per-point corner radius. Key = original point index. */
+  cornerRadii?: Record<number, number>;
+}
+
+/** True circle shape */
+export interface CircleShape extends ShapeBase {
+  kind: "circle";
+  cx: number;
+  cy: number;
+  r: number;
+}
+
+export type Shape = PolyShape | CircleShape;
+
+export type EditorMode = "edit" | "addpt" | "move" | "scale";
+export type RoundMode = "corner";
 
 export type GuideLine = {
-  type: 'h' | 'v';
+  type: "h" | "v";
   x?: number;
   y?: number;
 };
@@ -45,6 +60,12 @@ export type ViewState = {
   showGuides: boolean;
   roundMode: RoundMode;
   cornerRadius: number;
-  edgeBulge: number;
-  edgeBulgeSign: number;
+  /** Current zoom scale (1 = 100%). */
+  zoom: number;
+  /** Canvas pan offset in screen pixels. */
+  panX: number;
+  panY: number;
+  /** Layout states */
+  leftSidebarOpen: boolean;
+  rightSidebarOpen: boolean;
 };

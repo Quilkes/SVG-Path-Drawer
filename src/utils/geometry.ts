@@ -1,4 +1,4 @@
-import type { Point, Shape, GuideLine } from '../types/editor';
+import type { Point, PolyShape, GuideLine } from '../types/editor';
 
 export function dist(a: Point, b: Point): number {
   return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
@@ -14,7 +14,7 @@ export function getWindingSign(pts: Point[]): number {
   return area >= 0 ? 1 : -1;
 }
 
-export function getShapeBounds(s: Shape) {
+export function getPolyBounds(s: PolyShape) {
   if (!s || !s.points.length) return null;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   s.points.forEach(p => {
@@ -34,7 +34,7 @@ export function getShapeBounds(s: Shape) {
 
 const GUIDE_THRESH = 8;
 
-export function computeGuides(s: Shape | null, mx: number, my: number, movingSet?: Set<number>): GuideLine[] {
+export function computeGuides(s: PolyShape | null, mx: number, my: number, movingSet?: Set<number>): GuideLine[] {
   if (!s) return [];
   const g: GuideLine[] = [];
   s.points.forEach((pt, idx) => {
