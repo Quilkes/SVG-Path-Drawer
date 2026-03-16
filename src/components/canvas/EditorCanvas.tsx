@@ -108,7 +108,7 @@ export function EditorCanvas() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-      const { shapes, activeId, selectedPointIndices, viewState, mode } =
+    const { shapes, activeId, selectedPointIndices, viewState, mode } =
       useEditorStore.getState();
     const t: Transform = {
       zoom: viewState.zoom,
@@ -135,17 +135,17 @@ export function EditorCanvas() {
     }
 
     // ── Shapes ──
-      shapes.forEach((s) =>
-        drawShape(
-          ctx,
-          s,
-          s.id === activeId,
-          selectedPointIndices,
-          canvas,
-          t,
-          mode,
-        ),
-      );
+    shapes.forEach((s) =>
+      drawShape(
+        ctx,
+        s,
+        s.id === activeId,
+        selectedPointIndices,
+        canvas,
+        t,
+        mode,
+      ),
+    );
 
     // ── Guides ──
     if (
@@ -237,7 +237,7 @@ export function EditorCanvas() {
     selectedPointIndices: Set<number>,
     canvas: HTMLCanvasElement,
     t: Transform,
-      mode: string,
+    mode: string,
   ) {
     ctx.save();
     ctx.globalAlpha = s.opacity;
@@ -310,57 +310,57 @@ export function EditorCanvas() {
 
     if (!isActive) return;
 
-      const showEditOverlay =
-        mode === "edit" &&
-        (selectedPointIndices.size > 0 ||
-          hoveredPtRef.current !== null ||
-          draggingCtrlIdxRef.current !== null ||
-          isDraggingRef.current ||
-          grabModeRef.current);
+    const showEditOverlay =
+      mode === "edit" &&
+      (selectedPointIndices.size > 0 ||
+        hoveredPtRef.current !== null ||
+        draggingCtrlIdxRef.current !== null ||
+        isDraggingRef.current ||
+        grabModeRef.current);
 
-      if (showEditOverlay) {
-        // ── Skeleton ──
-        ctx.save();
-        ctx.strokeStyle = "rgba(74,158,255,0.18)";
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
+    if (showEditOverlay) {
+      // ── Skeleton ──
+      ctx.save();
+      ctx.strokeStyle = "rgba(74,158,255,0.18)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      s.points.forEach((pt, i) => {
+        const sp = toScreen(pt.x, pt.y, t);
+        i === 0 ? ctx.moveTo(sp.x, sp.y) : ctx.lineTo(sp.x, sp.y);
+      });
+      ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // ── Ctrl point lines ──
+      const ctrl = s.ctrlPoints || {};
+      ctx.strokeStyle = "rgba(74,205,204,0.25)";
+      ctx.lineWidth = 1;
+      Object.entries(ctrl).forEach(([k, cp]) => {
+        const idx = parseInt(k);
+        if (idx >= s.points.length) return;
+        const pt = s.points[idx];
+        const prevIdx = (idx - 1 + s.points.length) % s.points.length;
+        const prev = s.points[prevIdx];
+        const sp = toScreen(pt.x, pt.y, t);
+        const scp = toScreen(cp.x, cp.y, t);
+        const sprev = toScreen(prev.x, prev.y, t);
         ctx.beginPath();
-        s.points.forEach((pt, i) => {
-          const sp = toScreen(pt.x, pt.y, t);
-          i === 0 ? ctx.moveTo(sp.x, sp.y) : ctx.lineTo(sp.x, sp.y);
-        });
-        ctx.closePath();
+        ctx.moveTo(scp.x, scp.y);
+        ctx.lineTo(sp.x, sp.y);
         ctx.stroke();
-        ctx.setLineDash([]);
-
-        // ── Ctrl point lines ──
-        const ctrl = s.ctrlPoints || {};
-        ctx.strokeStyle = "rgba(74,205,204,0.25)";
-        ctx.lineWidth = 1;
-        Object.entries(ctrl).forEach(([k, cp]) => {
-          const idx = parseInt(k);
-          if (idx >= s.points.length) return;
-          const pt = s.points[idx];
-          const prevIdx = (idx - 1 + s.points.length) % s.points.length;
-          const prev = s.points[prevIdx];
-          const sp = toScreen(pt.x, pt.y, t);
-          const scp = toScreen(cp.x, cp.y, t);
-          const sprev = toScreen(prev.x, prev.y, t);
-          ctx.beginPath();
-          ctx.moveTo(scp.x, scp.y);
-          ctx.lineTo(sp.x, sp.y);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(scp.x, scp.y);
-          ctx.lineTo(sprev.x, sprev.y);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.arc(scp.x, scp.y, 3, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(74,205,204,0.7)";
-          ctx.fill();
-        });
-        ctx.restore();
-      }
+        ctx.beginPath();
+        ctx.moveTo(scp.x, scp.y);
+        ctx.lineTo(sprev.x, sprev.y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(scp.x, scp.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(74,205,204,0.7)";
+        ctx.fill();
+      });
+      ctx.restore();
+    }
 
     // ── Point handles ──
     s.points.forEach((pt, idx) => {
